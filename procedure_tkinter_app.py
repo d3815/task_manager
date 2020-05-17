@@ -8,6 +8,7 @@ import sqlite3
 
 
 def update_today_list_frame():
+
     for widget in today_task_frame.winfo_children():
         widget.destroy()
 
@@ -28,21 +29,14 @@ def update_today_list_frame():
         lab_date.pack()
         lab_priority = Label(today_tasks_frame, text='Приоритет {}'.format(i[4]))
         lab_priority.pack()
-        del_button = Button(today_tasks_frame, text='Удалить задачу', command=lambda i=i: delete_task(i[0]))
-        del_button.pack()
+        btn_del = Button(today_tasks_frame, text='Удалить задачу', command=lambda i=i: delete_task(i[0]))
+        btn_del.pack()
 
     task_canvas.create_window(0, 0, anchor='nw', window=today_tasks_frame)
     task_canvas.update_idletasks()
     task_canvas.configure(scrollregion=task_canvas.bbox('all'), yscrollcommand=task_list_scrollbar.set)
     task_canvas.pack(fill='both', expand=True, side='left')
-
     task_list_scrollbar.pack(side=RIGHT, fill=Y)
-
-
-
-
-    context = show_today_task()
-    return context
 
 
 def delete_task(task_id):
@@ -56,31 +50,31 @@ def delete_task(task_id):
     update_today_list_frame()
 
 
-def show_today_task():
-    time_today = datetime.datetime.today()
+def sql_request(request, contex_fetchall=False):
     conn = sqlite3.connect('mydatabase.db')
     cur = conn.cursor()
     sql_create = "CREATE TABLE IF NOT EXISTS Tasks (task_id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, " \
                  "description TEXT, due TEXT, priority INTEGER)"
     cur.execute(sql_create)
-    sql_show_today_task = "Select * FROM Tasks WHERE due = '{}-{}-{}'".format(time_today.day, time_today.month,
-                            str(time_today.year)[-2:])
-    cur.execute(sql_show_today_task)
+    cur.execute(request)
     context = cur.fetchall()
     conn.close()
+
+    return context
+
+
+def show_today_task():
+    time_today = datetime.datetime.today()
+    sql_show_today_task = "Select * FROM Tasks WHERE due = '{}-{}-{}'".format(time_today.day, time_today.month,
+                                                                              str(time_today.year)[-2:])
+    # сделать нормальное форматирование строки выше с датой
+    context = sql_request(sql_show_today_task)
     return context
 
 
 def show_all_task():
-    conn = sqlite3.connect("mydatabase.db")
-    cur = conn.cursor()
-    sql_create = "CREATE TABLE IF NOT EXISTS Tasks (task_id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, " \
-                 "description TEXT, due TEXT, priority INTEGER)"
-    cur.execute(sql_create)
     sql_show_all_tasks = 'SELECT * FROM Tasks ORDER BY due, priority'
-    cur.execute(sql_show_all_tasks)
-    context = cur.fetchall()
-    conn.close()
+    context = sql_request(sql_show_all_tasks)
     return context
 
 
@@ -93,8 +87,6 @@ def delete_window_context():
 
 def add_task():
     if title.get() and desc.get() and priority.get():
-        conn = sqlite3.connect("mydatabase.db")
-        cursor = conn.cursor()
         loc_title = title.get()
         loc_desc = desc.get()
         if date.get():
@@ -103,6 +95,8 @@ def add_task():
             loc_date = None
         loc_priority = priority.get()
 
+        conn = sqlite3.connect("mydatabase.db")
+        cursor = conn.cursor()
         sql_create = 'CREATE TABLE IF NOT EXISTS Tasks (task_id INTEGER PRIMARY KEY AUTOINCREMENT, ' \
                      'title TEXT, description TEXT, due TEXT, priority INTEGER)'
         cursor.execute(sql_create)
@@ -120,13 +114,13 @@ def add_task():
 
 
 def update_task_list_frame():
+
     for widget in all_task_frame.winfo_children():
         widget.destroy()
 
     task_list = show_all_task()
     task_count = Label(all_task_frame, text='Всего задач : {}'.format(len(task_list)))
     task_count.pack(side=TOP)
-
     task_canvas = Canvas(all_task_frame)
     task_list_scrollbar = Scrollbar(all_task_frame, orient="vertical", command=task_canvas.yview)
     frame = Frame()
@@ -140,22 +134,21 @@ def update_task_list_frame():
         lab_date.pack()
         lab_priority = Label(frame, text='Приоритет {}'.format(i[4]))
         lab_priority.pack()
-        del_button = Button(frame, text='Удалить задачу', command=lambda i=i: delete_task(i[0]))
-        del_button.pack()
+        btn_del = Button(frame, text='Удалить задачу', command=lambda i=i: delete_task(i[0]))
+        btn_del.pack()
 
     task_canvas.create_window(0, 0, anchor='nw', window=frame)
     task_canvas.update_idletasks()
     task_canvas.configure(scrollregion=task_canvas.bbox('all'), yscrollcommand=task_list_scrollbar.set)
     task_canvas.pack(fill='both', expand=True, side='left')
-
     task_list_scrollbar.pack(side=RIGHT, fill=Y)
 
 
 root = Tk()
 
 root.title('Task Manager')
-w = root.winfo_screenwidth() // 2
-h = root.winfo_screenheight() // 2
+w = root.winfo_screenwidth() // 4
+h = root.winfo_screenheight() // 4
 root.geometry('800x280+{}+{}'.format(w, h))
 root.resizable(width=False, height=False)
 
