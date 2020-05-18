@@ -3,24 +3,24 @@
 
 from tkinter import *
 from tkinter import messagebox
-import datetime
+from datetime import datetime
 import sqlite3
 
 
-def update_today_list_frame():
+def update_frame(frame_name, database):
 
-    for widget in today_task_frame.winfo_children():
+    for widget in frame_name.winfo_children():
         widget.destroy()
 
-    today_task_list = show_today_task()
-    task_count = Label(today_task_frame, text='Всего задач : {}'.format(len(today_task_list)))
+    task_list = database()
+    task_count = Label(frame_name, text='Всего задач : {}'.format(len(task_list)))
     task_count.pack(side=TOP)
 
-    task_canvas = Canvas(today_task_frame)
-    task_list_scrollbar = Scrollbar(today_task_frame, orient="vertical", command=task_canvas.yview)
+    task_canvas = Canvas(frame_name)
+    task_list_scrollbar = Scrollbar(frame_name, orient="vertical", command=task_canvas.yview)
     frame = Frame()
 
-    for i in today_task_list:
+    for i in task_list:
         lab_title = Label(frame, text=str.upper(i[1]))
         lab_title.pack()
         lab_desc = Label(frame, text=str.capitalize(i[2]))
@@ -42,8 +42,8 @@ def update_today_list_frame():
 def delete_task(task_id):
     sql_delete_task = 'DELETE FROM Tasks WHERE task_id = {}'.format(task_id)
     sql_request(sql_delete_task)
-    update_task_list_frame()
-    update_today_list_frame()
+    update_frame(today_task_frame, show_today_task)
+    update_frame(all_task_frame, show_all_task)
 
 
 def sql_request(request, contex_fetchall=False):
@@ -64,10 +64,11 @@ def sql_request(request, contex_fetchall=False):
 
 
 def show_today_task():
-    time_today = datetime.datetime.today()
-    sql_show_today_task = "Select * FROM Tasks WHERE due = '{}-{}-{}'".format(time_today.day, time_today.month,
-                                                                              str(time_today.year)[-2:])
-    # сделать нормальное форматирование строки с датой выше
+    today = datetime.now()
+
+    sql_show_today_task = "Select * FROM Tasks WHERE due = '{}-{}-{}'".format(today.strftime("%d"),
+                                                                              today.strftime("%m"),
+                                                                              today.strftime("%Y"))
     context = sql_request(sql_show_today_task, contex_fetchall=True)
     return context
 
@@ -78,7 +79,7 @@ def show_all_task():
     return context
 
 
-def delete_window_context():
+def delete_task_add_context():
     title.delete(first=0, last=500)
     desc.delete(first=0, last=500)
     date.delete(first=0, last=20)
@@ -99,43 +100,12 @@ def add_task():
                      "('{0}', '{1}', '{2}', '{3}')".format(loc_title, loc_desc, loc_date, loc_priority)
         sql_request(sql_update)
 
-        delete_window_context()
-        update_task_list_frame()
-        update_today_list_frame()
+        delete_task_add_context()
+        update_frame(today_task_frame, show_today_task)
+        update_frame(all_task_frame, show_all_task)
         title.focus()
     else:
         messagebox.showinfo('Failed', 'Введены некорректные данные')
-
-
-def update_task_list_frame():
-
-    for widget in all_task_frame.winfo_children():
-        widget.destroy()
-
-    task_list = show_all_task()
-    task_count = Label(all_task_frame, text='Всего задач : {}'.format(len(task_list)))
-    task_count.pack(side=TOP)
-    task_canvas = Canvas(all_task_frame)
-    task_list_scrollbar = Scrollbar(all_task_frame, orient="vertical", command=task_canvas.yview)
-    frame = Frame()
-
-    for i in task_list:
-        lab_title = Label(frame, text=str.upper(i[1]))
-        lab_title.pack()
-        lab_desc = Label(frame, text=str.capitalize(i[2]))
-        lab_desc.pack()
-        lab_date = Label(frame, text=i[3])
-        lab_date.pack()
-        lab_priority = Label(frame, text='Приоритет {}'.format(i[4]))
-        lab_priority.pack()
-        btn_del = Button(frame, text='Удалить задачу', command=lambda i=i: delete_task(i[0]))
-        btn_del.pack()
-
-    task_canvas.create_window(0, 0, anchor='nw', window=frame)
-    task_canvas.update_idletasks()
-    task_canvas.configure(scrollregion=task_canvas.bbox('all'), yscrollcommand=task_list_scrollbar.set)
-    task_canvas.pack(fill='both', expand=True, side='left')
-    task_list_scrollbar.pack(side=RIGHT, fill=Y)
 
 
 root = Tk()
@@ -183,7 +153,8 @@ new_task_frame.pack(side=LEFT, ipadx=10)
 all_task_frame.pack(side=LEFT, ipadx=10)
 today_task_frame.pack(side=LEFT, ipadx=10)
 
-update_task_list_frame()
-update_today_list_frame()
+update_frame(today_task_frame, show_today_task)
+update_frame(all_task_frame, show_all_task)
+
 
 root.mainloop()
