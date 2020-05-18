@@ -18,21 +18,21 @@ def update_today_list_frame():
 
     task_canvas = Canvas(today_task_frame)
     task_list_scrollbar = Scrollbar(today_task_frame, orient="vertical", command=task_canvas.yview)
-    today_tasks_frame = Frame()
+    frame = Frame()
 
     for i in today_task_list:
-        lab_title = Label(today_tasks_frame, text=str.upper(i[1]))
+        lab_title = Label(frame, text=str.upper(i[1]))
         lab_title.pack()
-        lab_desc = Label(today_tasks_frame, text=str.capitalize(i[2]))
+        lab_desc = Label(frame, text=str.capitalize(i[2]))
         lab_desc.pack()
-        lab_date = Label(today_tasks_frame, text=i[3])
+        lab_date = Label(frame, text=i[3])
         lab_date.pack()
-        lab_priority = Label(today_tasks_frame, text='Приоритет {}'.format(i[4]))
+        lab_priority = Label(frame, text='Приоритет {}'.format(i[4]))
         lab_priority.pack()
-        btn_del = Button(today_tasks_frame, text='Удалить задачу', command=lambda i=i: delete_task(i[0]))
+        btn_del = Button(frame, text='Удалить задачу', command=lambda i=i: delete_task(i[0]))
         btn_del.pack()
 
-    task_canvas.create_window(0, 0, anchor='nw', window=today_tasks_frame)
+    task_canvas.create_window(0, 0, anchor='nw', window=frame)
     task_canvas.update_idletasks()
     task_canvas.configure(scrollregion=task_canvas.bbox('all'), yscrollcommand=task_list_scrollbar.set)
     task_canvas.pack(fill='both', expand=True, side='left')
@@ -40,12 +40,8 @@ def update_today_list_frame():
 
 
 def delete_task(task_id):
-    conn = sqlite3.connect("mydatabase.db")
-    cur = conn.cursor()
     sql_delete_task = 'DELETE FROM Tasks WHERE task_id = {}'.format(task_id)
-    cur.execute(sql_delete_task)
-    conn.commit()
-    conn.close()
+    sql_request(sql_delete_task)
     update_task_list_frame()
     update_today_list_frame()
 
@@ -57,24 +53,28 @@ def sql_request(request, contex_fetchall=False):
                  "description TEXT, due TEXT, priority INTEGER)"
     cur.execute(sql_create)
     cur.execute(request)
-    context = cur.fetchall()
-    conn.close()
 
-    return context
+    if contex_fetchall:
+        context = cur.fetchall()
+        return context
+    else:
+        conn.commit()
+
+    conn.close()
 
 
 def show_today_task():
     time_today = datetime.datetime.today()
     sql_show_today_task = "Select * FROM Tasks WHERE due = '{}-{}-{}'".format(time_today.day, time_today.month,
                                                                               str(time_today.year)[-2:])
-    # сделать нормальное форматирование строки выше с датой
-    context = sql_request(sql_show_today_task)
+    # сделать нормальное форматирование строки с датой выше
+    context = sql_request(sql_show_today_task, contex_fetchall=True)
     return context
 
 
 def show_all_task():
     sql_show_all_tasks = 'SELECT * FROM Tasks ORDER BY due, priority'
-    context = sql_request(sql_show_all_tasks)
+    context = sql_request(sql_show_all_tasks, contex_fetchall=True)
     return context
 
 
@@ -95,16 +95,10 @@ def add_task():
             loc_date = None
         loc_priority = priority.get()
 
-        conn = sqlite3.connect("mydatabase.db")
-        cursor = conn.cursor()
-        sql_create = 'CREATE TABLE IF NOT EXISTS Tasks (task_id INTEGER PRIMARY KEY AUTOINCREMENT, ' \
-                     'title TEXT, description TEXT, due TEXT, priority INTEGER)'
-        cursor.execute(sql_create)
         sql_update = "INSERT INTO Tasks(title, description, due, priority) VALUES " \
                      "('{0}', '{1}', '{2}', '{3}')".format(loc_title, loc_desc, loc_date, loc_priority)
-        cursor.execute(sql_update)
-        conn.commit()
-        conn.close()
+        sql_request(sql_update)
+
         delete_window_context()
         update_task_list_frame()
         update_today_list_frame()
